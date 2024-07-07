@@ -1,0 +1,44 @@
+import numpy as np
+import pickle as pk
+from sklearn.model_selection import train_test_split
+
+import config
+
+# timestamp, max wind in m/s, seal level pressure, north and west component of wind, season cos, lat cos,
+# thermosphere climate index, depth, north and west component of tc speed, north and west dist to land
+# add center (or mean) values [ 'QV10M', 'T10M', 'TROPT', 'TS']
+
+
+def create_ds():
+    with open(config.cyclones_csv_fname.replace('.csv', '.pkl'), 'rb') as f:
+        cyclone_dict = pk.load(f)
+    total_state_data = np.zeros((0, config.analyzing_interval, 17))
+    total_fcst_data = np.zeros((0, 3))
+    step_forward = config.forecast_steps + config.analyzing_interval
+    for cyclone_name, cyclone_data in cyclone_dict.items():
+        if cyclone_data[0].shape[0] < (config.forecast_steps + config.analyzing_interval + 2): continue
+        cyclone_state_data = np.zeros((cyclone_data[0].shape[0] - step_forward, config.analyzing_interval, 17))
+        cyclone_forecast_data = np.zeros((cyclone_data[0].shape[0] - step_forward, 3))
+        for time_index, time_data in enumerate(cyclone_data[0][: - step_forward, :]):
+            forecast_row = cyclone_data[0][time_index + step_forward, :]
+            cyclone_forecast_data[time_index, :] = (forecast_row[1], forecast_row[9], forecast_row[10])
+            channel_data = cyclone_data[0][time_index: time_index + config.analyzing_interval, 1:]
+            center_data = cyclone_data[1][time_index: time_index + config.analyzing_interval, 1:6, 2]
+            cyclone_state_data[time_index, :, :] = np.concatenate((channel_data, center_data), axis=1)
+        if np.isnan(cyclone_state_data).any() or np.isnan(cyclone_forecast_data).any(): print(cyclone_name); continue
+        total_state_data = np.concatenate((total_state_data, cyclone_state_data), axis=0)
+        total_fcst_data = np.concatenate((total_fcst_data, cyclone_forecast_data), axis=0)
+    total_state_data[:, :, 0] = total_state_data[:, :, 0] / 10  # max wind m/s
+    total_state_data[:, :, 1] = (total_state_data[:, :, 1] - 100000) / 2000  # pressure
+    total_state_data[:, :, 7] = total_state_data[:, :, 7] / 1000  # sea depth
+    total_state_data[:, :, [10, 11]] = total_state_data[:, :, [10, 11]] / 500  # dist to land
+    total_state_data[:, :, 14] = (total_state_data[:, :, 14] - 190) / 40  # TROPT
+    total_state_data[:, :, [13, 15]] = total_state_data[:, :, [13, 15]] - 300  # serface and 10M temperature
+    total_state_data[:, :, 16] = total_state_data[:, :, 16] / 10  # mean wind speed m/s
+    inf_wind_indxs = np.where(total_state_data == np.inf)
+    total_state_data[np.where(total_state_data > 100000)] = 0.5
+    total_state_data[inf_wind_indxs[0], inf_wind_indxs[1], inf_wind_indxs[2]] = 0
+    x_train, x_test, y_train, y_test = train_test_split(total_state_data[:,:,[0,1,5,11,12,13,16]], total_fcst_data, test_size=0.2, shuffle=False)
+    print('DS prepared')  # [:,:,[0,1,5,11,12,13,16]]
+    return x_train, x_test, y_train[:, 0]/10, y_test[:, 0]/10
+
