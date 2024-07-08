@@ -38,7 +38,9 @@ def create_ds():
     inf_wind_indxs = np.where(total_state_data == np.inf)
     total_state_data[np.where(total_state_data > 100000)] = 0.5
     total_state_data[inf_wind_indxs[0], inf_wind_indxs[1], inf_wind_indxs[2]] = 0
-    x_train, x_test, y_train, y_test = train_test_split(total_state_data[:,:,[0,1,5,11,12,13,16]], total_fcst_data, test_size=0.2, shuffle=False)
-    print('DS prepared')  # [:,:,[0,1,5,11,12,13,16]]
+    x_train, x_test, y_train, y_test = train_test_split(total_state_data, total_fcst_data, test_size=0.2, shuffle=False)
+    x_train = np.swapaxes(x_train[:,:,[0,1,5,11,12,13,16]], 2, 1)
+    x_test = np.swapaxes(x_test[:,:,[0,1,5,11,12,13,16]], 2, 1)
+    print('DS prepared')  #
     return x_train, x_test, y_train[:, 0]/10, y_test[:, 0]/10
 
