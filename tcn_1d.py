@@ -37,7 +37,7 @@ class TemporalBlock(nn.Module):
         self.conv1.weight.data.normal_(0, 0.01)
         self.conv2.weight.data.normal_(0, 0.01)
         if self.downsample is not None:
-            self.downsample.weight.data.normal_(0, 0.01)
+            self.downsample.weight.data.normal_(0, 0.005)
 
     def forward(self, x):
         out = self.net(x)
@@ -46,7 +46,7 @@ class TemporalBlock(nn.Module):
 
 
 class TemporalConvNet(nn.Module):
-    def __init__(self, num_inputs, num_channels, kernel_size=2, dropout=0.2):
+    def __init__(self, num_inputs, num_channels, kernel_size=2, dropout=0.0):
         super(TemporalConvNet, self).__init__()
         layers = []
         num_levels = len(num_channels)
@@ -67,13 +67,12 @@ class TCN(nn.Module):
     def __init__(self, input_size, output_size, num_channels, kernel_size, dropout):
         super(TCN, self).__init__()
         self.tcn = TemporalConvNet(input_size, num_channels, kernel_size, dropout=dropout)
-        self.linear = nn.Linear(num_channels[-1]*7, output_size)
+        self.linear = nn.Linear(num_channels[-1]*9, output_size)
         self.sig = nn.Sigmoid()
 
     def forward(self, x):
         # x needs to have dimension (N, C, L) in order to be passed into CNN
         output = self.tcn(x.transpose(1, 2)).transpose(1, 2)
         output = flatten(output, start_dim=1, end_dim=-1)
-        print(output.shape)
         output = self.linear(output)
         return output

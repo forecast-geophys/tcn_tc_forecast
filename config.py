@@ -9,7 +9,7 @@ meteo_param = ['PS', 'QV10M', 'T10M', 'TROPT', 'TS', 'U10M', 'V10M']
 cyclone_region = 'NA'
 meteo_param_radius = 250
 meteo_param_n_bins = 10
-forecast_steps = 8  # 4 8
+forecast_steps = 3  # 4 8
 analyzing_interval = 8
 
 
